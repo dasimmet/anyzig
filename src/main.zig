@@ -1192,11 +1192,13 @@ fn fetchFile(
     uri: std.Uri,
     out_filepath: []const u8,
 ) !void {
-    log.info("fetch '{}' to '{s}'", .{ uri, out_filepath });
+    log.info("fetch '{s}' to '{s}'", .{ url_string, out_filepath });
     const root = global.getRootProgressNode();
 
-    const progress_node_name = std.fmt.allocPrint(scratch, "fetch {s}", .{uri}) catch |e| oom(e);
-    defer scratch.free(progress_node_name);
+    const progress_node_name = std.fmt.allocPrint(scratch, "fetch-{s}", .{
+        std.fs.path.basename(out_filepath),
+    }) catch |e| oom(e);
+
     const node = root.start(progress_node_name, 0);
     defer node.end();
 
@@ -1279,6 +1281,7 @@ fn fetchFile(
     };
 
     if (maybe_content_length) |content_length| {
+        node.setEstimatedTotalItems(content_length);
         try file.setEndPos(content_length);
     }
 
@@ -1294,6 +1297,7 @@ fn fetchFile(
         };
         if (len == 0) break;
         total_received += len;
+        node.setCompletedItems(total_received);
 
         if (maybe_content_length) |content_length| {
             if (total_received > content_length) {
