@@ -500,6 +500,10 @@ pub fn main() !void {
             try al.append(arena, cmdline.arg(arg_index));
         }
         var child: std.process.Child = .init(al.items, arena);
+
+        if (global.root_progress_node) |n| {
+            n.end();
+        }
         try child.spawn();
         const result = try child.wait();
         switch (result) {
@@ -559,6 +563,10 @@ pub fn main() !void {
             }
             break :blk try al.toOwnedSliceSentinel(arena, null);
         };
+
+        if (global.root_progress_node) |n| {
+            n.end();
+        }
         const err = std.posix.execveZ(versioned_exe, argv, @ptrCast(std.os.environ.ptr));
         log.err("exec '{s}' failed with {s}", .{ versioned_exe, @errorName(err) });
         process.exit(0xff);
