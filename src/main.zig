@@ -967,7 +967,7 @@ const FetchInfo = struct {
             try std.Uri.parse(self.archive_url),
             self.archive_path,
         ) catch |err| {
-            std.log.err("failed to download archive: {} {s}", .{ err, self.archive_url });
+            std.log.err("failed to download archive: {s} {s}", .{ @errorName(err), self.archive_url });
             return err;
         };
         fetchFile(
@@ -976,12 +976,12 @@ const FetchInfo = struct {
             try std.Uri.parse(self.minisign_url),
             self.minisign_path,
         ) catch |err| {
-            std.log.err("failed to download signature: {} {s}", .{ err, self.minisign_url });
+            std.log.err("failed to download signature: {s} {s}", .{ @errorName(err), self.minisign_url });
             return err;
         };
 
         self.validateMinisign(gpa) catch |err| {
-            std.log.err("failed to validate: {} {s}", .{ err, self.archive_url });
+            std.log.err("failed to validate: {s} {s}", .{ @errorName(err), self.archive_url });
             return err;
         };
     }
@@ -1023,8 +1023,11 @@ pub const MirrorUrls = struct {
 
         var arena = std.heap.ArenaAllocator.init(gpa);
         defer arena.deinit();
-        fetchFile(arena.allocator(), mirrorlist.url, mirrorlist.uri, mirrorlist_path) catch {
-            log.err("failed to fetch mirrorlist to: {s}", .{mirrorlist_path});
+        fetchFile(arena.allocator(), mirrorlist.url, mirrorlist.uri, mirrorlist_path) catch |err| {
+            if (@errorReturnTrace()) |et| {
+                std.debug.dumpStackTrace(et.*);
+            }
+            log.err("failed to fetch mirrorlist: {s} {s}", .{ @errorName(err), mirrorlist_path });
         };
 
         const mirrors_content = blk: {

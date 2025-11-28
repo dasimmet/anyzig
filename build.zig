@@ -13,7 +13,7 @@ pub fn build(b: *std.Build) !void {
         []const u8,
         "force-version",
         "Force a specific version, bypassing the automatic calendar version.",
-    )) |v| v else null;
+    )) |v| v[0..11].* else null;
     const release_version = if (version_option) |v| v else try makeCalVersion();
     const dev_version = b.fmt("{s}-dev", .{if (version_option) |v| v else release_version});
     const write_files_version = b.addWriteFiles();
