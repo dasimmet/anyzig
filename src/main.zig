@@ -27,6 +27,7 @@ pub const log = std.log;
 const hashstore = @import("hashstore.zig");
 const LockFile = @import("LockFile.zig");
 const Cmdline = @import("Cmdline.zig");
+const BoundedArray = @import("BoundedArray.zig").BoundedArray;
 
 pub const std_options: std.Options = .{
     .logFn = anyzigLog,
@@ -137,15 +138,14 @@ fn anyzigLog(
         }
     }
 
-    const stderr = std.io.getStdErr().writer();
-    var bw = std.io.bufferedWriter(stderr);
-    const writer = bw.writer();
+    var stderr_buf: [64]u8 = undefined;
+    var stderr = std.fs.File.stderr().writer(&stderr_buf);
 
     std.debug.lockStdErr();
     defer std.debug.unlockStdErr();
     nosuspend {
-        writer.print("anyzig" ++ scope_level ++ ": " ++ format ++ "\n", args) catch return;
-        bw.flush() catch return;
+        stderr.interface.print("anyzig" ++ scope_level ++ ": " ++ format ++ "\n", args) catch return;
+        stderr.interface.flush() catch return;
     }
 }
 
@@ -264,11 +264,11 @@ fn determineSemanticVersion(scratch: Allocator, build_root: BuildRoot) !Semantic
         }
 
         log.info(
-            "{s} '{s}' pulled from '{}build.zig.zon'",
+            "{s} '{s}' pulled from '{f}build.zig.zon'",
             .{ key_version, version, build_root.directory },
         );
         return SemanticVersion.parse(version) orelse errExit(
-            "{}build.zig.zon has invalid {s} \"{s}\"",
+            "{f}build.zig.zon has invalid {s} \"{s}\"",
             .{ build_root.directory, key_version, version },
         );
     }
@@ -340,7 +340,8 @@ pub fn main() !void {
     const version_specifier: VersionSpecifier, const is_init = blk: {
         if (maybe_command) |command| {
             if (std.mem.startsWith(u8, command, "-") and !std.mem.eql(u8, command, "-h") and !std.mem.eql(u8, command, "--help")) {
-                try std.io.getStdErr().writer().print(
+                var stderr = std.fs.File.stderr().writer(&.{});
+                try stderr.interface.print(
                     "error: expected a command but got '{s}'\n",
                     .{command},
                 );
@@ -357,7 +358,9 @@ pub fn main() !void {
                 };
 
                 if (manual_version) |version| break :blk .{ version, !is_help };
-                try std.io.getStdErr().writer().print(
+
+                var stderr = std.fs.File.stderr().writer(&.{});
+                try stderr.interface.print(
                     "error: anyzig init requires a version, i.e. 'zig 0.13.0 {s}'\n",
                     .{command},
                 );
@@ -367,7 +370,8 @@ pub fn main() !void {
         }
         if (manual_version) |version| break :blk .{ version, false };
         const build_root = try findBuildRoot(arena, build_root_options) orelse {
-            try std.io.getStdErr().writeAll(
+            var stderr = std.fs.File.stderr().writer(&.{});
+            try stderr.interface.writeAll(
                 "no build.zig to pull a zig version from, you can:\n" ++
                     "  1. run '" ++ exe_str ++ " VERSION' to specify a version\n" ++
                     "  2. run from a directory where a build.zig can be found\n",
@@ -574,7 +578,8 @@ pub fn main() !void {
 }
 
 fn anyCommandUsage() !u8 {
-    try std.io.getStdErr().writer().print(
+    var stderr = std.fs.File.stderr().writer(&.{});
+    try stderr.interface.print(
         "any" ++ @tagName(build_options.exe) ++ " {s} from https://github.com/marler8997/anyzig\n" ++
             "Here are the anyzig-specific subcommands:\n" ++
             "  zig any set-verbosity LEVEL    | sets the default system-wide verbosity\n" ++
@@ -595,7 +600,8 @@ fn anyCommand(cmdline: Cmdline, cmdline_offset: usize) !u8 {
 
     if (std.mem.eql(u8, command, "version")) {
         if (arg_offset < cmdline.len()) errExit("the 'version' subcommand does not take any cmdline args", .{});
-        try std.io.getStdOut().writer().print("{s}\n", .{@embedFile("version")});
+        var stdout = std.fs.File.stdout().writer(&.{});
+        try stdout.interface.print("{s}\n", .{@embedFile("version")});
         return 0;
     } else if (std.mem.eql(u8, command, "set-verbosity")) {
         if (arg_offset >= cmdline.len()) errExit("missing VERBOSITY (either 'warn' or 'debug')", .{});
@@ -618,7 +624,8 @@ fn anyCommand(cmdline: Cmdline, cmdline_offset: usize) !u8 {
             }
             const file = try std.fs.cwd().createFile(verbosity_path, .{});
             defer file.close();
-            try file.writer().print("{s}\n", .{level_str});
+            var file_writer = file.writer(&.{});
+            try file_writer.interface.print("{s}\n", .{level_str});
         }
         switch (readVerbosityFile()) {
             .no_app_data_dir => @panic("no app data dir?"),
@@ -682,7 +689,8 @@ fn listInstalled() !void {
         child.stdout_behavior = .Pipe;
         child.spawn() catch continue; // probably not a valid zig
 
-        const child_stdout = try child.stdout.?.reader().readAllAlloc(global.arena, 100);
+        var child_stdout_w = child.stdout.?.reader(&.{});
+        const child_stdout = try child_stdout_w.interface.allocRemaining(global.arena, .limited(100));
         defer global.arena.free(child_stdout);
         const result = try child.wait();
         if (result != .Exited or result.Exited != 0) {
@@ -691,7 +699,7 @@ fn listInstalled() !void {
         }
         const version_str = std.mem.trimRight(u8, child_stdout, "\r\n");
         const semantic_version = SemanticVersion.parse(version_str) orelse continue;
-        const hashstore_name = std.fmt.allocPrint(global.arena, exe_str ++ "-{}", .{semantic_version}) catch |e| oom(e);
+        const hashstore_name = std.fmt.allocPrint(global.arena, exe_str ++ "-{f}", .{semantic_version}) catch |e| oom(e);
         defer global.arena.free(hashstore_name);
         const maybe_hash = maybeHashAndPath(try hashstore.find(hashstore_path, hashstore_name));
         if (maybe_hash) |*anyzig_store_hash| {
@@ -714,8 +722,8 @@ fn listInstalled() !void {
 }
 
 fn listVersion(p_path: []const u8, version: SemanticVersion, hash: []const u8) !void {
-    const stdout = io.getStdOut().writer();
-    try stdout.print("{}\t{s}{s}{s}\n", .{ version, p_path, std.fs.path.sep_str, hash });
+    var stdout = std.fs.File.stdout().writer(&.{});
+    try stdout.interface.print("{f}\t{s}{s}{s}\n", .{ version, p_path, std.fs.path.sep_str, hash });
 }
 
 pub const SemanticVersion = struct {
@@ -726,12 +734,12 @@ pub const SemanticVersion = struct {
     major: usize,
     minor: usize,
     patch: usize,
-    pre: ?std.BoundedArray(u8, max_pre),
-    build: ?std.BoundedArray(u8, max_build),
+    pre: ?BoundedArray(u8, max_pre),
+    build: ?BoundedArray(u8, max_build),
 
-    pub fn array(self: *const SemanticVersion) std.BoundedArray(u8, max_string) {
-        var result: std.BoundedArray(u8, max_string) = undefined;
-        const roundtrip = std.fmt.bufPrint(&result.buffer, "{}", .{self}) catch unreachable;
+    pub fn array(self: *const SemanticVersion) BoundedArray(u8, max_string) {
+        var result: BoundedArray(u8, max_string) = undefined;
+        const roundtrip = std.fmt.bufPrint(&result.buffer, "{f}", .{self}) catch unreachable;
         result.len = roundtrip.len;
         return result;
     }
@@ -746,10 +754,10 @@ pub const SemanticVersion = struct {
             .major = parsed.major,
             .minor = parsed.minor,
             .patch = parsed.patch,
-            .pre = if (parsed.pre) |pre| std.BoundedArray(u8, max_pre).init(pre.len) catch |e| switch (e) {
+            .pre = if (parsed.pre) |pre| BoundedArray(u8, max_pre).init(pre.len) catch |e| switch (e) {
                 error.Overflow => std.debug.panic("semantic version pre '{s}' is too long (max is {})", .{ pre, max_pre }),
             } else null,
-            .build = if (parsed.build) |build| std.BoundedArray(u8, max_build).init(build.len) catch |e| switch (e) {
+            .build = if (parsed.build) |build| BoundedArray(u8, max_build).init(build.len) catch |e| switch (e) {
                 error.Overflow => std.debug.panic("semantic version build '{s}' is too long (max is {})", .{ build, max_build }),
             } else null,
         };
@@ -781,11 +789,9 @@ pub const SemanticVersion = struct {
     }
     pub fn format(
         self: SemanticVersion,
-        comptime fmt: []const u8,
-        options: std.fmt.FormatOptions,
-        writer: anytype,
+        writer: *std.Io.Writer,
     ) !void {
-        try self.ref().format(fmt, options, writer);
+        try self.ref().format(writer);
     }
 };
 
@@ -1174,7 +1180,7 @@ fn extractUrlFromMachDownloadIndex(
     };
 }
 
-const PathBuf = std.BoundedArray(u8, 2 + zig.Package.Hash.max_len);
+const PathBuf = BoundedArray(u8, 2 + zig.Package.Hash.max_len);
 const HashAndPath = struct {
     val: zig.Package.Hash,
     path_buf: PathBuf,
@@ -1224,7 +1230,7 @@ fn fetchFile(
     defer client.deinit();
     client.initDefaultProxies(scratch) catch |err| {
         log.err(
-            "fetch '{}': init proxy failed with {s}",
+            "fetch '{f}': init proxy failed with {s}",
             .{ uri, @errorName(err) },
         );
         return err;

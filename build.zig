@@ -98,13 +98,15 @@ pub fn build(b: *std.Build) !void {
     const test_step = b.step("test", "");
     addTests(b, dev_version, anyzig, test_step, .{ .make_build_steps = true });
 
-    const zip_dep = b.dependency("zip", .{});
+    const zip_dep = b.dependency("zipcmdline", .{});
 
     const host_zip_exe = b.addExecutable(.{
         .name = "zip",
-        .root_source_file = zip_dep.path("src/zip.zig"),
-        .target = b.graph.host,
-        .optimize = .Debug,
+        .root_module = b.createModule(.{
+            .root_source_file = zip_dep.path("src/zip.zig"),
+            .target = b.graph.host,
+            .optimize = .Debug,
+        }),
     });
 
     const ci_step = b.step("ci", "The build/test step to run on the CI");
@@ -226,8 +228,10 @@ fn addTests(
         .anyzig = anyzig,
         .wrap_exe = b.addExecutable(.{
             .name = "wrap",
-            .root_source_file = b.path("test/wrap.zig"),
-            .target = b.graph.host,
+            .root_module = b.createModule(.{
+                .root_source_file = b.path("test/wrap.zig"),
+                .target = b.graph.host,
+            }),
         }),
         .make_build_steps = opt.make_build_steps,
     };
