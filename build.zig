@@ -15,7 +15,7 @@ pub fn build(b: *std.Build) !void {
         "Force a specific version, bypassing the automatic calendar version.",
     );
     const release_version = if (version_option) |v| v else try b.allocator.dupe(u8, &try makeCalVersion());
-    const dev_version = b.fmt("{s}-dev", .{if (version_option) |v| v else release_version});
+    const dev_version = if (version_option) |v| v else b.fmt("{s}-dev", .{release_version});
 
     const write_files_version = b.addWriteFiles();
     const release_version_file = write_files_version.add("version-release", release_version);
