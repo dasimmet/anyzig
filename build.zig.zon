@@ -5,7 +5,7 @@
     .minimum_zig_version = "0.14.1",
     .dependencies = .{
         .zig = .{
-            .url = "git+https://github.com/ziglang/zig.git?ref=0.14.1#d03a147ea0a590ca711b3db07106effc559b0fc6",
+            .url = "git+https://codeberg.org/ziglang/zig.git?ref=0.14.1#d03a147ea0a590ca711b3db07106effc559b0fc6",
             .hash = "zig-0.0.0-Fp4XJConMAvbptegZi4D-tp5r9VKMY6KCB_mEm9mSzZN",
         },
         .zip = .{
