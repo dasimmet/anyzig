@@ -46,7 +46,7 @@ pub fn build(b: *std.Build) !void {
                 .root_source_file = b.path("src/main.zig"),
                 .target = target,
                 .optimize = optimize,
-                .single_threaded = true,
+                // .single_threaded = true,
                 .imports = &.{
                     .{ .name = "zig", .module = zig_mod },
                     .{ .name = "minizign", .module = minizign_mod },
@@ -74,7 +74,7 @@ pub fn build(b: *std.Build) !void {
                 .root_source_file = b.path("src/main.zig"),
                 .target = target,
                 .optimize = optimize,
-                .single_threaded = true,
+                // .single_threaded = true,
                 .imports = &.{
                     .{ .name = "zig", .module = zig_mod },
                     .{ .name = "version", .module = dev_version_embed },
@@ -634,7 +634,7 @@ fn ci(
                 .root_source_file = b.path("src/main.zig"),
                 .target = target,
                 .optimize = optimize,
-                .single_threaded = true,
+                // .single_threaded = true,
                 .imports = &.{
                     .{ .name = "zig", .module = zig_mod },
                     .{ .name = "minizign", .module = minizign_mod },
@@ -652,7 +652,7 @@ fn ci(
                 .root_source_file = b.path("src/main.zig"),
                 .target = target,
                 .optimize = optimize,
-                .single_threaded = true,
+                // .single_threaded = true,
                 .imports = &.{
                     .{ .name = "zig", .module = zig_mod },
                     .{ .name = "minizign", .module = minizign_mod },
