@@ -1023,8 +1023,11 @@ pub const MirrorUrls = struct {
 
         var arena = std.heap.ArenaAllocator.init(gpa);
         defer arena.deinit();
-        fetchFile(arena.allocator(), mirrorlist.url, mirrorlist.uri, mirrorlist_path) catch {
-            log.err("failed to fetch mirrorlist to: {s}", .{mirrorlist_path});
+        fetchFile(arena.allocator(), mirrorlist.url, mirrorlist.uri, mirrorlist_path) catch |err| {
+            if (@errorReturnTrace()) |et| {
+                std.debug.dumpStackTrace(et.*);
+            }
+            log.err("failed to fetch mirrorlist: {s} {s}", .{ @errorName(err), mirrorlist_path });
         };
 
         const mirrors_content = blk: {
