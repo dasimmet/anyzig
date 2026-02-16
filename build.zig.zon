@@ -27,5 +27,6 @@
         "src",
         "test",
         "zigroot",
+        "test",
     },
 }

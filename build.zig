@@ -10,18 +10,20 @@ pub fn build(b: *std.Build) !void {
     const minizign_dep = b.dependency("minizign", .{ .@"no-cli" = true });
     const minizign_mod = minizign_dep.module("minizign");
 
-    const version_option: ?[11]u8 = if (b.option(
+    const version_option: ?[]const u8 = b.option(
         []const u8,
         "force-version",
         "Force a specific version, bypassing the automatic calendar version.",
-    )) |v| verifyForceVersion(v) else null;
-    const release_version = if (version_option) |v| v else try makeCalVersion(b.graph.io);
-    const dev_version = b.fmt("{s}-dev", .{if (version_option) |v| v else release_version});
+    );
+    const release_version = if (version_option) |v| v else try b.allocator.dupe(u8, &try makeCalVersion(b.graph.io));
+    const dev_version = if (version_option) |v| v else b.fmt("{s}-dev", .{release_version});
+
     const write_files_version = b.addWriteFiles();
-    const release_version_file = write_files_version.add("version-release", &release_version);
+    const release_version_file = write_files_version.add("version-release", release_version);
     const release_version_embed = b.createModule(.{
         .root_source_file = release_version_file,
     });
+
     const dev_version_embed = b.createModule(.{
         .root_source_file = write_files_version.add("version-dev", dev_version),
     });
@@ -63,6 +65,7 @@ pub fn build(b: *std.Build) !void {
                         }) else dev_version_embed,
                     },
                 },
+                .error_tracing = true,
             }),
         });
         setBuildOptions(b, exe, .zig);
@@ -143,7 +146,7 @@ pub fn build(b: *std.Build) !void {
     const release_step = b.step("release", "Build/archive release executables for all targets and test the native one");
     release_step.dependOn(&install_version_release_file.step);
 
-    try addReleaseSteps(b, &release_version, release_version_embed, zig_mod, minizign_mod, release_step, host_zip_exe);
+    try addReleaseSteps(b, release_version, release_version_embed, zig_mod, minizign_mod, release_step, host_zip_exe);
 }
 
 fn verifyForceVersion(v: []const u8) [11]u8 {
