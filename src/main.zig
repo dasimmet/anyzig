@@ -1301,14 +1301,16 @@ fn fetchFile(
 
     var total_received: u64 = 0;
     var transfer_buffer: [4096]u8 = undefined;
-    const response_reader = response.reader(&transfer_buffer);
+    var decompress_buffer: [std.compress.flate.max_window_len]u8 = undefined;
+    var decompress: std.http.Decompress = undefined;
+    const response_reader = response.readerDecompressing(&transfer_buffer, &decompress, &decompress_buffer);
+
     while (true) {
         var buf: [@max(std.heap.page_size_min, 4096)]u8 = undefined;
         const len = response_reader.readSliceShort(&buf) catch |e| std.debug.panic(
             "fetch '{f}': read failed with {s}",
             .{ uri, @errorName(e) },
         );
-        if (len == 0) break;
         total_received += len;
         node.setCompletedItems(total_received);
 
@@ -1324,6 +1326,7 @@ fn fetchFile(
             "fetch '{f}': write {} bytes of HTTP response failed with {s}",
             .{ uri, len, @errorName(err) },
         );
+        if (len < buf.len) break;
     }
 
     if (maybe_content_length) |content_length| {
