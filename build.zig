@@ -149,7 +149,11 @@ fn verifyForceVersion(v: []const u8) [11]u8 {
 }
 
 fn makeCalVersion() ![11]u8 {
-    const now = std.time.epoch.EpochSeconds{ .secs = @intCast(std.time.timestamp()) };
+    var threaded = std.Io.Threaded.init_single_threaded;
+    defer threaded.deinit();
+    const now = std.time.epoch.EpochSeconds{
+        .secs = @intCast(std.Io.Clock.real.now(threaded.io()).toSeconds()),
+    };
     const day = now.getEpochDay();
     const year_day = day.calculateYearDay();
     const month_day = year_day.calculateMonthDay();
