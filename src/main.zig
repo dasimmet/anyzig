@@ -26,6 +26,7 @@ pub const log = std.log;
 
 const hashstore = @import("hashstore.zig");
 const LockFile = @import("LockFile.zig");
+const Cmdline = @import("Cmdline.zig");
 
 pub const std_options: std.Options = .{
     .logFn = anyzigLog,
