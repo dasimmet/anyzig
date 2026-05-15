@@ -56,6 +56,7 @@ pub fn build(b: *std.Build) !void {
                     .{ .name = "version", .module = dev_version_embed },
                 },
                 .error_tracing = true,
+                .link_libc = true,
             }),
         });
         setBuildOptions(b, exe, .zig);

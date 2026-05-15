@@ -3,21 +3,23 @@ pub const LockFile = @This();
 
 const builtin = @import("builtin");
 const std = @import("std");
+const File = std.Io.File;
+const Dir = std.Io.Dir;
 
 path: []const u8,
-file: std.fs.File,
+file: File,
 
-pub fn lock(path: []const u8) !LockFile {
+pub fn lock(io: std.Io, path: []const u8) !LockFile {
     if (std.fs.path.dirname(path)) |dir| {
-        try std.fs.cwd().makePath(dir);
+        try Dir.cwd().createDirPath(io, dir);
     }
-    const file = try std.fs.cwd().createFile(path, .{});
+    const file = try Dir.cwd().createFile(io, path, .{});
     errdefer {
-        file.close();
-        std.fs.cwd().deleteFile(path) catch {};
+        file.close(io);
+        Dir.cwd().deleteFile(io, path) catch {};
     }
 
-    try file.lock(.exclusive);
+    try file.lock(io, .exclusive);
 
     // Write the current process ID to the lock file
     // This is helpful for debugging and allows other processes to detect stale locks
@@ -29,8 +31,8 @@ pub fn lock(path: []const u8) !LockFile {
     };
     var pid_buffer: [40]u8 = undefined;
     const pid_text = try std.fmt.bufPrint(&pid_buffer, "{d}", .{pid});
-    _ = try file.writeAll(pid_text);
-    try file.sync();
+    _ = try file.writeStreamingAll(io, pid_text);
+    try file.sync(io);
 
     return LockFile{
         .file = file,
@@ -38,10 +40,10 @@ pub fn lock(path: []const u8) !LockFile {
     };
 }
 
-pub fn unlock(self: *LockFile) void {
-    self.file.unlock();
-    self.file.close();
-    std.fs.cwd().deleteFile(self.path) catch |err| switch (err) {
+pub fn unlock(self: *LockFile, io: std.Io) void {
+    self.file.unlock(io);
+    self.file.close(io);
+    Dir.cwd().deleteFile(io, self.path) catch |err| switch (err) {
         error.FileNotFound => {},
         else => |e| std.debug.panic("failed to delete lock file '{s}' with {s}", .{ self.path, @errorName(e) }),
     };
