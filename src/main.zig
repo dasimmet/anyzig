@@ -26,7 +26,6 @@ pub const log = std.log;
 
 const hashstore = @import("hashstore.zig");
 const LockFile = @import("LockFile.zig");
-const Cmdline = @import("Cmdline.zig");
 
 pub const std_options: std.Options = .{
     .logFn = anyzigLog,
@@ -159,7 +158,7 @@ fn anyzigLog(
     defer std.debug.unlockStderr();
     nosuspend {
         writer.print("anyzig" ++ scope_level ++ ": " ++ format ++ "\n", args) catch return;
-        stderr.flush() catch return;
+        writer.flush() catch return;
     }
 }
 
@@ -605,7 +604,7 @@ fn anyCommand(cmdline: Cmdline, cmdline_offset: usize) !u8 {
     if (std.mem.eql(u8, command, "version")) {
         if (arg_offset < cmdline.len()) errExit("the 'version' subcommand does not take any cmdline args", .{});
         var stdout_buf: [4096]u8 = undefined;
-        var stdout_writer = std.fs.File.stdout().writer(&stdout_buf);
+        var stdout_writer = std.Io.File.stdout().writer(global.io, &stdout_buf);
         try stdout_writer.interface.print("{s}\n", .{@embedFile("version")});
         try stdout_writer.interface.flush();
         return 0;
@@ -794,7 +793,7 @@ pub const SemanticVersion = struct {
     pub fn eql(self: SemanticVersion, other: SemanticVersion) bool {
         return self.ref().order(other.ref()) == .eq;
     }
-    pub fn format(self: SemanticVersion, writer: *std.io.Writer) !void {
+    pub fn format(self: SemanticVersion, writer: *std.Io.Writer) !void {
         try self.ref().format(writer);
     }
 };
