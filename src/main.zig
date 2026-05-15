@@ -57,37 +57,36 @@ const Verbosity = enum {
     pub const default: Verbosity = .debug;
 };
 
-const global = struct {
-    var gpa_instance: std.heap.GeneralPurposeAllocator(.{}) = .{};
-    const gpa = gpa_instance.allocator();
-    var arena_instance = std.heap.ArenaAllocator.init(gpa);
-    const arena = arena_instance.allocator();
-
-    var cached_verbosity: ?Verbosity = null;
-    var cached_app_data_dir: ?union(enum) {
+var global: Global = .{};
+const Global = struct {
+    gpa: std.mem.Allocator = undefined,
+    arena: std.mem.Allocator = undefined,
+    io: std.Io = undefined,
+    cached_verbosity: ?Verbosity = null,
+    cached_app_data_dir: ?union(enum) {
         ok: []const u8,
         err: anyerror,
-    } = null;
+    } = null,
+    root_progress_node: ?std.Progress.Node = null,
 
-    fn getAppDataDir() ![]const u8 {
-        if (cached_app_data_dir == null) {
-            cached_app_data_dir = if (std.fs.getAppDataDir(arena, "anyzig")) |dir|
+    fn getAppDataDir(self: *Global) ![]const u8 {
+        if (self.cached_app_data_dir == null) {
+            self.cached_app_data_dir = if (std.fs.getAppDataDir(self.arena, "anyzig")) |dir|
                 .{ .ok = dir }
             else |e|
                 .{ .err = e };
         }
-        return switch (cached_app_data_dir.?) {
+        return switch (self.cached_app_data_dir.?) {
             .ok => |d| d,
             .err => |e| e,
         };
     }
 
-    var root_progress_node: ?std.Progress.Node = null;
-    fn getRootProgressNode() std.Progress.Node {
-        if (root_progress_node == null) {
-            root_progress_node = std.Progress.start(.{ .root_name = "anyzig" });
+    fn getRootProgressNode(self: *Global) std.Progress.Node {
+        if (self.root_progress_node == null) {
+            self.root_progress_node = std.Progress.start(.{ .root_name = "anyzig" });
         }
-        return root_progress_node.?;
+        return self.root_progress_node.?;
     }
 };
 
@@ -154,15 +153,13 @@ fn anyzigLog(
         }
     }
 
-    const stderr = std.Io.File.stderr().writer();
-    var bw = std.io.bufferedWriter(stderr);
-    const writer = bw.writer();
-
-    std.debug.lockStdErr();
-    defer std.debug.unlockStdErr();
+    var buf: [4096]u8 = undefined;
+    var stderr = std.debug.lockStderr(&buf);
+    const writer = &stderr.file_writer.interface;
+    defer std.debug.unlockStderr();
     nosuspend {
-        bw.interface.print("anyzig" ++ scope_level ++ ": " ++ format ++ "\n", args) catch return;
-        bw.interface.flush() catch return;
+        writer.print("anyzig" ++ scope_level ++ ": " ++ format ++ "\n", args) catch return;
+        stderr.flush() catch return;
     }
 }
 
@@ -307,16 +304,16 @@ fn determineSemanticVersion(scratch: Allocator, build_root: BuildRoot) !Semantic
     // return "0.13.0";
 }
 
-pub fn main() !void {
+pub fn main(init: std.process.Init) !void {
+    global.gpa = init.gpa;
+    global.arena = init.arena.allocator();
+    global.io = init.io;
+    const gpa = init.gpa;
+    const arena = global.arena;
+
     defer if (global.root_progress_node) |n| {
         n.end();
     };
-
-    defer _ = global.gpa_instance.deinit();
-    const gpa = global.gpa;
-
-    defer global.arena_instance.deinit();
-    const arena = global.arena;
 
     const cmdline: Cmdline = try .alloc(arena);
     defer cmdline.free(arena);
