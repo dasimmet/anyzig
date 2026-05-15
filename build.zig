@@ -99,23 +99,23 @@ pub fn build(b: *std.Build) !void {
     const test_step = b.step("test", "");
     addTests(b, dev_version, anyzig, test_step, .{ .make_build_steps = true });
 
-    const zip_dep = b.dependency("zip", .{});
+    // const zip_dep = b.dependency("zip", .{});
 
-    const host_zip_exe = b.addExecutable(.{
-        .name = "zip",
-        .root_module = b.createModule(.{
-            .root_source_file = zip_dep.path("src/zip.zig"),
-            .target = b.graph.host,
-            .optimize = .Debug,
-        }),
-    });
+    // const host_zip_exe = b.addExecutable(.{
+    //     .name = "zip",
+    //     .root_module = b.createModule(.{
+    //         .root_source_file = zip_dep.path("src/zip.zig"),
+    //         .target = b.graph.host,
+    //         .optimize = .Debug,
+    //     }),
+    // });
 
-    const ci_step = b.step("ci", "The build/test step to run on the CI");
-    ci_step.dependOn(b.getInstallStep());
-    ci_step.dependOn(test_step);
-    ci_step.dependOn(&install_version_release_file.step);
+    // const ci_step = b.step("ci", "The build/test step to run on the CI");
+    // ci_step.dependOn(b.getInstallStep());
+    // ci_step.dependOn(test_step);
+    // ci_step.dependOn(&install_version_release_file.step);
 
-    try ci(b, release_version, release_version_embed, zig_mod, minizign_mod, ci_step, host_zip_exe);
+    // try ci(b, release_version, release_version_embed, zig_mod, minizign_mod, ci_step, host_zip_exe);
 }
 
 fn verifyForceVersion(v: []const u8) [11]u8 {
