@@ -26,7 +26,6 @@ pub const log = std.log;
 
 const hashstore = @import("hashstore.zig");
 const LockFile = @import("LockFile.zig");
-const Cmdline = @import("Cmdline.zig");
 
 pub const std_options: std.Options = .{
     .logFn = anyzigLog,
@@ -315,17 +314,16 @@ pub fn main(init: std.process.Init) !void {
         n.end();
     };
 
-    const cmdline: Cmdline = try .alloc(arena);
-    defer cmdline.free(arena);
+    const cmdline = try init.minimal.args.toSlice(arena);
 
     const cmdline_offset: usize, const manual_version: ?VersionSpecifier = blk: {
-        if (cmdline.len() >= 2) {
-            if (VersionSpecifier.parse(cmdline.arg(1))) |v| break :blk .{ 2, v };
+        if (cmdline.len >= 2) {
+            if (VersionSpecifier.parse(cmdline[1])) |v| break :blk .{ 2, v };
         }
         break :blk .{ 1, null };
     };
 
-    const maybe_command: ?[]const u8 = if (cmdline_offset >= cmdline.len()) null else cmdline.arg(cmdline_offset);
+    const maybe_command: ?[]const u8 = if (cmdline_offset >= cmdline.len) null else cmdline[cmdline_offset];
 
     const build_root_options = blk: {
         var options: FindBuildRootOptions = .{};
@@ -334,12 +332,12 @@ pub fn main(init: std.process.Init) !void {
                 if (maybe_command) |command| {
                     if (std.mem.eql(u8, command, "build")) {
                         var index: usize = cmdline_offset + 1;
-                        while (index < cmdline.len()) : (index += 1) {
-                            const arg = cmdline.arg(index);
+                        while (index < cmdline.len) : (index += 1) {
+                            const arg = cmdline[index];
                             if (std.mem.eql(u8, arg, "--build-file")) {
-                                if (index == cmdline.len()) break;
+                                if (index == cmdline.len) break;
                                 index += 1;
-                                options.build_file = cmdline.arg(index);
+                                options.build_file = cmdline[index];
                                 log.info("build file '{s}'", .{options.build_file.?});
                             }
                         }
@@ -360,8 +358,8 @@ pub fn main(init: std.process.Init) !void {
             if (build_options.exe == .zig and (std.mem.eql(u8, command, "init") or std.mem.eql(u8, command, "init-exe") or std.mem.eql(u8, command, "init-lib"))) {
                 const is_help = blk_is_help: {
                     var index: usize = cmdline_offset + 1;
-                    while (index < cmdline.len()) : (index += 1) {
-                        const arg = cmdline.arg(index);
+                    while (index < cmdline.len) : (index += 1) {
+                        const arg = cmdline[index];
                         if (std.mem.eql(u8, arg, "-h")) break :blk_is_help true;
                         if (std.mem.eql(u8, arg, "--help")) break :blk_is_help true;
                     } else break :blk_is_help false;
@@ -501,7 +499,7 @@ pub fn main(init: std.process.Init) !void {
         //       our process gets killed
         var al: ArrayListUnmanaged([]const u8) = .{};
         try al.append(arena, versioned_exe);
-        for (cmdline_offset..cmdline.len()) |arg_index| {
+        for (cmdline_offset..cmdline.len) |arg_index| {
             try al.append(arena, cmdline.arg(arg_index));
         }
         var child: std.process.Child = .init(al.items, arena);
@@ -595,23 +593,23 @@ fn anyCommandUsage() !u8 {
     return 0xff;
 }
 
-fn anyCommand(cmdline: Cmdline, cmdline_offset: usize) !u8 {
-    if (cmdline_offset == cmdline.len()) {
+fn anyCommand(cmdline: []const []const u8, cmdline_offset: usize) !u8 {
+    if (cmdline_offset == cmdline.len) {
         std.process.exit(try anyCommandUsage());
     }
     const command = cmdline.arg(cmdline_offset);
     const arg_offset = cmdline_offset + 1;
 
     if (std.mem.eql(u8, command, "version")) {
-        if (arg_offset < cmdline.len()) errExit("the 'version' subcommand does not take any cmdline args", .{});
+        if (arg_offset < cmdline.len) errExit("the 'version' subcommand does not take any cmdline args", .{});
         var stdout_buf: [4096]u8 = undefined;
         var stdout_writer = std.Io.File.stdout().writer(global.io, &stdout_buf);
         try stdout_writer.interface.print("{s}\n", .{@embedFile("version")});
         try stdout_writer.interface.flush();
         return 0;
     } else if (std.mem.eql(u8, command, "set-verbosity")) {
-        if (arg_offset >= cmdline.len()) errExit("missing VERBOSITY (either 'warn' or 'debug')", .{});
-        if (arg_offset + 1 < cmdline.len()) errExit("too many cmdline args", .{});
+        if (arg_offset >= cmdline.len) errExit("missing VERBOSITY (either 'warn' or 'debug')", .{});
+        if (arg_offset + 1 < cmdline.len) errExit("too many cmdline args", .{});
         const level_str = cmdline.arg(arg_offset);
         const level: Verbosity = blk: {
             if (std.mem.eql(u8, level_str, "warn")) break :blk .warn;
@@ -640,7 +638,7 @@ fn anyCommand(cmdline: Cmdline, cmdline_offset: usize) !u8 {
         }
         return 0;
     } else if (std.mem.eql(u8, command, "list-installed")) {
-        if (arg_offset < cmdline.len()) errExit("the 'list-installed' subcommand does not take any cmdline args", .{});
+        if (arg_offset < cmdline.len) errExit("the 'list-installed' subcommand does not take any cmdline args", .{});
         try listInstalled();
         return 0;
     } else errExit("unknown zig any '{s}' command", .{command});
