@@ -124,7 +124,7 @@ fn readVerbosityFile() union(enum) {
 
 fn anyzigLog(
     comptime level: std.log.Level,
-    comptime scope: @Type(.enum_literal),
+    comptime scope: @EnumLiteral(),
     comptime format: []const u8,
     args: anytype,
 ) void {
@@ -154,8 +154,9 @@ fn anyzigLog(
         }
     }
 
-    var stderr_buf: [4096]u8 = undefined;
-    var bw = std.fs.File.stderr().writer(&stderr_buf);
+    const stderr = std.Io.File.stderr().writer();
+    var bw = std.io.bufferedWriter(stderr);
+    const writer = bw.writer();
 
     std.debug.lockStdErr();
     defer std.debug.unlockStdErr();

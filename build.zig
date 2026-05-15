@@ -18,15 +18,15 @@ pub fn build(b: *std.Build) !void {
     const dev_version = if (version_option) |v| v else b.fmt("{s}-dev", .{release_version});
 
     const write_files_version = b.addWriteFiles();
-    const release_version_file = write_files_version.add("version-release", release_version);
-    const release_version_embed = b.createModule(.{
-        .root_source_file = release_version_file,
-    });
+    // const release_version_file = write_files_version.add("version-release", release_version);
+    // const release_version_embed = b.createModule(.{
+    //     .root_source_file = release_version_file,
+    // });
 
     const dev_version_embed = b.createModule(.{
         .root_source_file = write_files_version.add("version-dev", dev_version),
     });
-    const install_version_release_file = b.addInstallFile(release_version_file, "version-release");
+    // const install_version_release_file = b.addInstallFile(release_version_file, "version-release");
 
     const write = b.addWriteFiles();
     _ = write.addCopyDirectory(zig_dep.path("."), "", .{});
