@@ -577,11 +577,19 @@ pub fn main(init: std.process.Init) !void {
             }
             break :blk try al.toOwnedSliceSentinel(arena, null);
         };
+        const env = blk: {
+            var al: ArrayListUnmanaged(?[*:0]const u8) = .empty;
+            var it = global.env_map.iterator();
+            while (it.next()) |kv| {
+                try al.append(arena, try std.fmt.allocPrintSentinel(arena, "{s}={s}", .{ kv.key_ptr.*, kv.value_ptr.* }, 0));
+            }
+            break :blk try al.toOwnedSliceSentinel(arena, null);
+        };
 
         if (global.root_progress_node) |n| {
             n.end();
         }
-        const err = std.c.execve(versioned_exe, argv, @ptrCast(&global.env));
+        const err = std.c.execve(versioned_exe, argv, env);
         log.err("exec '{s}' failed with {s}", .{ versioned_exe, @tagName(std.c.errno(err)) });
         process.exit(0xff);
     }
@@ -1404,11 +1412,11 @@ pub fn cmdFetch(
         .global_cache = global_cache_directory,
         .local_cache = .{
             .root_dir = global_cache_directory,
-            .sub_path = "local-cache",
+            .sub_path = "tmp",
         },
         .root_pkg_path = .{
             .root_dir = global_cache_directory,
-            .sub_path = "zig-compiler",
+            .sub_path = "p",
         },
         .recursive = false,
         .read_only = false,
