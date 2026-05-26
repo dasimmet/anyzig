@@ -16,11 +16,9 @@ pub const GetAppDataDirError = error{
 pub fn getAppDataDir(allocator: mem.Allocator, env_map: std.process.Environ.Map, appname: []const u8) GetAppDataDirError![]u8 {
     switch (native_os) {
         .windows => {
-            const local_app_data_dir = std.process.getEnvVarOwned(allocator, "LOCALAPPDATA") catch |err| switch (err) {
-                error.OutOfMemory => |e| return e,
-                else => return error.AppDataDirUnavailable,
+            const local_app_data_dir = env_map.get("LOCALAPPDATA") orelse {
+                return error.AppDataDirUnavailable;
             };
-            defer allocator.free(local_app_data_dir);
             return fs.path.join(allocator, &[_][]const u8{ local_app_data_dir, appname });
         },
         .macos => {

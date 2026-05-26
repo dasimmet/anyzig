@@ -49,11 +49,15 @@ pub fn build(b: *std.Build) !void {
                 .root_source_file = b.path("src/main.zig"),
                 .target = target,
                 .optimize = optimize,
-                // .single_threaded = true,
                 .imports = &.{
                     .{ .name = "zig", .module = zig_mod },
                     .{ .name = "minizign", .module = minizign_mod },
-                    .{ .name = "version", .module = dev_version_embed },
+                    .{
+                        .name = "version",
+                        .module = if (b.graph.environ_map.get("HEW_BUILD_REVISION")) |r| b.createModule(.{
+                            .root_source_file = write_files_version.add("version-release-native", b.fmt("{s}-native", .{r})),
+                        }) else dev_version_embed,
+                    },
                 },
                 .error_tracing = true,
                 .link_libc = true,
@@ -79,7 +83,6 @@ pub fn build(b: *std.Build) !void {
                 .root_source_file = b.path("src/main.zig"),
                 .target = target,
                 .optimize = optimize,
-                // .single_threaded = true,
                 .imports = &.{
                     .{ .name = "zig", .module = zig_mod },
                     .{ .name = "version", .module = dev_version_embed },
@@ -327,6 +330,8 @@ fn addTests(
         const zig_version = field.name;
         const zig_release: ZigRelease = @enumFromInt(field.value);
 
+        if (zig_release == .@"2024.11.0-mach") continue; // TODO: re-enable when pkg.hexops.org is back online
+
         switch (builtin.os.tag) {
             .linux => switch (builtin.cpu.arch) {
                 .x86_64 => switch (comptime zig_release) {
@@ -345,6 +350,18 @@ fn addTests(
             .macos => switch (builtin.cpu.arch) {
                 .aarch64 => switch (comptime zig_release) {
                     .@"0.7.1" => continue, // HTTP download fails with "404 Not Found"
+                    else => {},
+                },
+                else => {},
+            },
+            .windows => switch (builtin.cpu.arch) {
+                .aarch64 => switch (comptime zig_release) {
+                    // no windows-aarch64 downloads before 0.9.0
+                    .@"0.7.0",
+                    .@"0.7.1",
+                    .@"0.8.0",
+                    .@"0.8.1",
+                    => continue,
                     else => {},
                 },
                 else => {},
@@ -396,6 +413,13 @@ fn addTests(
                     .@"0.7.0" => false, // crashes for some reason?
                     .@"0.9.0", .@"0.9.1" => false, // panics
                     .@"0.10.0", .@"0.10.1" => false, // error(link): undefined reference to symbol 'dyld_stub_binder'
+                    else => true,
+                },
+                else => true,
+            },
+            .windows => switch (b.graph.host.result.cpu.arch) {
+                .aarch64 => switch (zig_release) {
+                    .@"0.9.0", .@"0.9.1" => false, // zig build crashes with exit code 255
                     else => true,
                 },
                 else => true,

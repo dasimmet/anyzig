@@ -600,7 +600,7 @@ fn anyCommandUsage() !u8 {
         "any" ++ @tagName(build_options.exe) ++ " {s} from https://github.com/marler8997/anyzig\n" ++
             "Here are the anyzig-specific subcommands:\n" ++
             "  zig any set-verbosity LEVEL    | sets the default system-wide verbosity\n" ++
-            "                                 | accepts 'warn' or 'debug\n" ++
+            "                                 | accepts 'warn' or 'debug'\n" ++
             "  zig any version                | print the version of anyzig to stdout\n" ++
             "  zig any list-installed         | list all versions of zig installed in the global cache\n",
         .{@embedFile("version")},
@@ -1285,10 +1285,13 @@ fn fetchFile(
     );
     var request = client.request(.GET, uri, .{
         .keep_alive = false,
-    }) catch |e| std.debug.panic(
-        "fetch '{f}': connect failed with {s}",
-        .{ uri, @errorName(e) },
-    );
+    }) catch |e| {
+        std.log.err(
+            "fetch '{f}': connect failed with {s}",
+            .{ uri, @errorName(e) },
+        );
+        return e;
+    };
     defer request.deinit();
     request.sendBodiless() catch |e| std.debug.panic(
         "fetch '{f}': send failed with {s}",
