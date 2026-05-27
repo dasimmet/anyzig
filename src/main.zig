@@ -1279,10 +1279,13 @@ fn fetchFile(
         .allocator = scratch,
     };
     defer client.deinit();
-    client.initDefaultProxies(scratch, global.env_map) catch |err| std.debug.panic(
-        "fetch '{f}': init proxy failed with {s}",
-        .{ uri, @errorName(err) },
-    );
+    client.initDefaultProxies(scratch, global.env_map) catch |e| {
+        std.log.err(
+            "fetch '{f}': init proxy failed with {s}",
+            .{ uri, @errorName(e) },
+        );
+    };
+
     var request = client.request(.GET, uri, .{
         .keep_alive = false,
     }) catch |e| {
@@ -1293,18 +1296,28 @@ fn fetchFile(
         return e;
     };
     defer request.deinit();
-    request.sendBodiless() catch |e| std.debug.panic(
-        "fetch '{f}': send failed with {s}",
-        .{ uri, @errorName(e) },
-    );
-    var response = request.receiveHead(&.{}) catch |e| std.debug.panic(
-        "fetch '{f}': wait failed with {s}",
-        .{ uri, @errorName(e) },
-    );
-    if (response.head.status != .ok) return errExit(
-        "fetch '{f}': HTTP response {} \"{?s}\"",
-        .{ uri, @intFromEnum(response.head.status), response.head.status.phrase() },
-    );
+    request.sendBodiless() catch |e| {
+        std.log.err(
+            "fetch '{f}': send failed with {s}",
+            .{ uri, @errorName(e) },
+        );
+        return e;
+    };
+
+    var response = request.receiveHead(&.{}) catch |e| {
+        std.log.err(
+            "fetch '{f}': wait failed with {s}",
+            .{ uri, @errorName(e) },
+        );
+        return e;
+    };
+    if (response.head.status != .ok) {
+        std.log.err(
+            "fetch '{f}': HTTP response {} \"{?s}\"",
+            .{ uri, @intFromEnum(response.head.status), response.head.status.phrase() },
+        );
+        return error.UnexpectedHttpStatus;
+    }
 
     const out_filepath_tmp = std.mem.concat(scratch, u8, &.{ out_filepath, ".fetching" }) catch |e| oom(e);
     defer scratch.free(out_filepath_tmp);
