@@ -34,7 +34,7 @@ pub fn build(b: *std.Build) !void {
 
     const write = b.addWriteFiles();
     _ = write.addCopyDirectory(zig_dep.path("."), "", .{});
-    const root = write.addCopyFile(b.path("zigroot/root.zig"), "src/root.zig");
+    const root = write.addCopyFile(b.path("zigroot/root.zig"), "lib/compiler/Maker/root.zig");
     const zig_mod = b.createModule(.{
         .root_source_file = root,
     });
