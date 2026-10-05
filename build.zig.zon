@@ -9,8 +9,8 @@
             .hash = "zig-0.0.0-Fp4XJNPbSg7JHi19U9bkBViqpw1CEGENf1JhYBLHWjMq",
         },
         .minizign = .{
-            .url = "git+https://github.com/jedisct1/zig-minisign.git?ref=0.1.14#2f0e4b8a0fc60b9b1acf371ae5f833eff1471b36",
-            .hash = "minizign-0.1.14-gg18ccIgAQDxrsk4PIbQV-HGoSW3a9KQXh4a9UcZNU94",
+            .url = "git+https://github.com/jedisct1/zig-minisign.git#4bdf1637d966cdd401535c297c6860ea933536ea",
+            .hash = "minizign-0.1.14-gg18cVwiAQCB2XE1lUwcFhpLFK6_Q8AUQ4shgFTgpdwh",
         },
         // .zipcmdline = .{
         //     .url = "git+https://github.com/marler8997/zipcmdline#a8807944231b46565450504cb7f3146e29e51335",
