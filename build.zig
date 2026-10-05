@@ -5,8 +5,12 @@ const zig = @import("zig");
 const Exe = enum { zig, zls };
 
 pub fn build(b: *std.Build) !void {
-    const zig_dep = b.dependency("zig", .{});
-    const minizign_dep = b.dependency("minizign", .{});
+    const zig_dep = b.dependency("zig", .{
+        .@"version-string" = @as([]const u8, "0.17.0"),
+    });
+    const minizign_dep = b.dependency("minizign", .{
+        .@"no-cli" = true,
+    });
     const minizign_mod = minizign_dep.module("minizign");
 
     const version_option: ?[]const u8 = b.option(
@@ -68,10 +72,8 @@ pub fn build(b: *std.Build) !void {
         b.getInstallStep().dependOn(&install.step);
 
         const run = b.addRunArtifact(exe);
+        run.addPassthruArgs();
         run.step.dependOn(&install.step);
-        if (b.args) |args| {
-            run.addArgs(args);
-        }
         b.step("run", "").dependOn(&run.step);
         break :blk exe;
     };
@@ -94,9 +96,7 @@ pub fn build(b: *std.Build) !void {
 
         const run = b.addRunArtifact(exe);
         run.step.dependOn(&install.step);
-        if (b.args) |args| {
-            run.addArgs(args);
-        }
+        run.addPassthruArgs();
         b.step("zls", "").dependOn(&run.step);
     }
 
@@ -326,9 +326,8 @@ fn addTests(
         .args = &.{ "master", "init" },
     });
 
-    inline for (std.meta.fields(ZigRelease)) |field| {
-        const zig_version = field.name;
-        const zig_release: ZigRelease = @enumFromInt(field.value);
+    inline for (std.enums.values(ZigRelease)) |zig_release| {
+        const zig_version = @tagName(zig_release);
 
         if (zig_release == .@"2024.11.0-mach") continue; // TODO: re-enable when pkg.hexops.org is back online
 

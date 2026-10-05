@@ -2,15 +2,15 @@
     .name = .anyzig,
     .version = "0.0.1",
     .fingerprint = 0x7cd092f5bd0fed33, // Changing this has security and trust implications.
-    .minimum_zig_version = "0.16.0",
+    .minimum_zig_version = "0.17.0",
     .dependencies = .{
         .zig = .{
-            .url = "git+https://codeberg.org/ziglang/zig.git?ref=0.16.0#24fdd5b7a4c1c8b5deb5b56756b9dbc8e08c86a8",
-            .hash = "zig-0.0.0-Fp4XJF7K5Q2eAAyVqdvkzzyYaVh8qqRtQ34GbWHGTHw6",
+            .url = "git+https://codeberg.org/ziglang/zig.git?ref=0.17.0#7647adab80dd088f4de3610fd245915a912eb6ad",
+            .hash = "zig-0.0.0-Fp4XJNPbSg7JHi19U9bkBViqpw1CEGENf1JhYBLHWjMq",
         },
         .minizign = .{
-            .url = "git+https://github.com/jedisct1/zig-minisign.git#7e163ef9a98bdd1c7e9a03589533f16d2564ce5e",
-            .hash = "minizign-0.1.12-gg18ceIgAQC-jy6G6dFT26i5Ghlx3jmX3FFLcf7nKiZJ",
+            .url = "git+https://github.com/jedisct1/zig-minisign.git?ref=0.1.14#2f0e4b8a0fc60b9b1acf371ae5f833eff1471b36",
+            .hash = "minizign-0.1.14-gg18ccIgAQDxrsk4PIbQV-HGoSW3a9KQXh4a9UcZNU94",
         },
         // .zipcmdline = .{
         //     .url = "git+https://github.com/marler8997/zipcmdline#a8807944231b46565450504cb7f3146e29e51335",
